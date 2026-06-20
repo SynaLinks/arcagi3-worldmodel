@@ -156,8 +156,8 @@ Why `ArcAgi3Env` is swm-ready out of the box:
 # Offline (mock game, no API key) — a complete working run:
 python train.py --rounds 10 --episodes-per-round 16 --image-size 32 --eval-episodes 2
 
-python train.py --init-from arc_wm.pt --rounds 5       # resume / keep learning
-python train.py --rounds 5 --objective curiosity       # pure exploration instead
+python train.py --resume checkpoints/mock-grid-v0.pt --rounds 5  # resume / keep learning
+python train.py --rounds 5 --objective explore         # pure exploration instead
 ```
 
 For the **real API**, pass a concrete `game_id` (the ids look like `sc25-635fd71a`,
@@ -175,36 +175,43 @@ python train.py --online --game sc25-635fd71a --rounds 10 --eval-episodes 2
 > modest and expect it to run much slower than the offline mock.
 
 **Monitoring.** Per-round eval already prints `win_rate` and `mean_levels`. Add
-`--monitor` to wrap the eval env in `gymnasium.wrappers.RecordEpisodeStatistics`
+`--record-stats` to wrap the eval env in `gymnasium.wrappers.RecordEpisodeStatistics`
 (episode return/length/time; `mean_len` is appended to the round line), and
 `--video-dir DIR` to record each eval episode to disk via
 `gymnasium.wrappers.RecordVideo` (needs `pip install moviepy`):
 
 ```bash
 python train.py --rounds 10 --episodes-per-round 16 --image-size 32 \
-    --eval-episodes 2 --monitor --video-dir runs/videos
+    --eval-episodes 2 --record-stats --video-dir runs/videos
 ```
 
 It bundles three things:
 
-- **World model** — CNN encoder + `nn.Embedding` action encoder (for the
-  `Discrete(4101)` action) + MLP predictor + deconv decoder + a **reward head**.
-  Trained on (frame + action → next frame) pixel loss and a transition-reward loss.
+- **World model** — a DreamerV3-style RSSM: CNN encoder + `nn.Embedding` action
+  encoder (for the `Discrete(4101)` action) + a recurrent latent predictor over
+  **categorical latents** (`--latent-dim` / `--latent-classes`) + deconv decoder,
+  plus a **two-hot symlog reward head** (`--reward-bins`), a **continue head**
+  (episode end), and a **learned-surprise head** (novelty). The loss combines
+  image reconstruction + reward + continue + surprise + the dynamics/representation
+  **KL** (free-bits, `β_dyn`/`β_rep`).
 - **CEM-MPC planner** — rolls the model forward in latent space over a `Discrete`
   candidate set (5 simple actions, plus an ACTION6 click grid via `--click-stride`)
   and picks the best first action. Default objective is task-directed:
-  `predicted_reward + β·curiosity` (`--curiosity-beta`); `--objective curiosity`
-  is pure exploration.
-- **The loop** — round 0 acts **randomly** (no model), fills a growing in-memory
-  `ReplayBuffer`, trains a model. Every later round acts with an ε-greedy
+  `predicted_reward + β·surprise` (`--explore-beta`); `--objective explore`
+  is pure novelty-seeking exploration.
+- **The loop** — the first round acts **randomly** (no model yet), fills a growing
+  in-memory `ReplayBuffer`, trains a model. Every later round acts with the
   CEM-MPC policy driven by the current model, appends the new experience, and
-  **fine-tunes the same model** (warm-start = continual, not from scratch). A few
-  greedy eval episodes per round give a progress signal.
+  **fine-tunes the same model** (warm-start = continual, not from scratch).
+  Exploration is uncertainty-driven (the learned-surprise bonus), **not**
+  ε-greedy. A few greedy eval episodes per round give a progress signal.
 
 ```
-device=cuda env=swm/ArcAgi3Mock-v0 rounds=10 objective=reward candidates=5
-round 1/10 [random] buffer=16 eps / 1280 steps  eval: win_rate=0.00 mean_levels=0.00
-round 2/10 [mpc   ] buffer=32 eps / 2560 steps  eval: ...
+start: device=cuda env=swm/ArcAgi3Mock-v0 game=mock-grid-v0 rounds=10 objective=reward candidates=4101 ...
+round 1/10 [random] collecting 16 episodes over 8 env(s)...
+  collected: buffer=16 eps / 1280 steps
+  eval: win_rate=0.00 mean_levels=0.00
+round 2/10 [mpc] collecting 16 episodes over 8 env(s)...
 ...
 ```
 

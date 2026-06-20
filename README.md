@@ -175,6 +175,32 @@ python train.py --online --game sc25 --rounds 10 --eval-episodes 2   # or the fu
 > Online is network-bound — every `step` is one HTTP call — so keep `--num-envs`
 > modest and expect it to run much slower than the offline mock.
 
+A short verified end-to-end run against the live `ls20` game (a random round, then
+an MPC round that actually plays the game, with per-round training + eval):
+
+```console
+$ python train.py --online --game ls20 --rounds 2 --episodes-per-round 2 \
+      --num-envs 2 --eval-episodes 1 --image-size 32 --max-episode-steps 20
+INFO start: env=swm/ArcAgi3-v0 game=ls20 rounds=2 objective=reward candidates=4101 ckpt=checkpoints/ls20.pt
+INFO round 1/2 [random] collecting 2 episodes over 2 env(s)...
+INFO   collected: buffer=2 eps / 40 steps
+INFO   training 5 epochs (lr=0.0003) on 38 clips...
+INFO     epoch   5/5  loss=5.76479 (recon=0.3281 reward=3.6677 cont=0.6545 surprise=0.0145 kl=1.1000)
+INFO   saved checkpoint -> checkpoints/ls20.pt
+INFO   eval: win_rate=0.00 mean_levels=0.00
+INFO round 2/2 [mpc] collecting 2 episodes over 2 env(s)...
+INFO   scorecard 733727ec: score=0.000 levels=0/7 actions=21 envs_done=0/1
+INFO   collected: buffer=4 eps / 80 steps
+INFO   training 5 epochs (lr=0.0003) on 76 clips...
+INFO   saved checkpoint -> checkpoints/ls20.pt
+INFO   eval: win_rate=0.00 mean_levels=0.00
+INFO done: final model at checkpoints/ls20.pt
+```
+
+> `win_rate=0.00` is expected here — this is a tiny model over a handful of
+> 20-step episodes, just to show the loop runs end-to-end on a real game. Solving
+> ARC-AGI-3 is open research (see the note below).
+
 **Monitoring.** Per-round eval already prints `win_rate` and `mean_levels`. Add
 `--record-stats` to wrap the eval env in `gymnasium.wrappers.RecordEpisodeStatistics`
 (episode return/length/time; `mean_len` is appended to the round line), and

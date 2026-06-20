@@ -1,0 +1,27 @@
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "arcagi3-worldmodel"
+version = "0.1.0"
+description = "A Gymnasium environment for the ARC-AGI-3 game API plus a DreamerV3-style world model that learns and plans on it"
+readme = "README.md"
+requires-python = ">=3.10"
+license = "Apache-2.0"
+dependencies = [
+    "gymnasium>=0.29",
+    "numpy>=1.24",
+    "python-dotenv>=1.0",
+    "pydantic>=2.0",
+    "stable-worldmodel>=0.1.1",
+    "opencv-python-headless",
+    "imageio",
+]
+
+[project.optional-dependencies]
+http = ["requests>=2.31"]
+dev = ["pytest>=7", "requests>=2.31"]
+
+[tool.setuptools]
+py-modules = ["data_models", "client", "env", "train"]

@@ -186,6 +186,18 @@ class ArcAgi3Env(gym.Env):
             if not games:
                 raise RuntimeError("No ARC-AGI-3 games available for this API key.")
             self._game_id = games[0]
+        elif "-" not in self._game_id:
+            # A bare prefix like "ls20": the suffix after the dash is only a
+            # version, so resolve it against the games this key can actually see
+            # (e.g. "ls20" -> "ls20-9607627b"). Cached: the resolved id contains
+            # a dash, so this runs at most once per env.
+            games = self.client.list_games()
+            matches = [g for g in games if g.split("-", 1)[0] == self._game_id]
+            if not matches:
+                raise RuntimeError(
+                    f"Game {self._game_id!r} matched none of the available games: {games}"
+                )
+            self._game_id = matches[0]
 
         if self.manage_scorecard and not self.card_id:
             self.card_id = self.client.open_scorecard(tags=self.tags)

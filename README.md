@@ -160,15 +160,16 @@ python train.py --resume checkpoints/mock-grid-v0.pt --rounds 5  # resume / keep
 python train.py --rounds 5 --objective explore         # pure exploration instead
 ```
 
-For the **real API**, pass a concrete `game_id` (the ids look like `sc25-635fd71a`,
-not bare prefixes). List what your key can see, then train against one:
+For the **real API**, pass a `--game`. The full ids look like `sc25-635fd71a`,
+but the suffix is only a version — so a bare prefix (`sc25`) also works: it's
+resolved against the games your key can see. List them, then train against one:
 
 ```bash
 # set ARC_API_KEY in .env first (see "Quick start (online)" above)
 python -c "from dotenv import load_dotenv; load_dotenv('.env'); \
 from client import HttpArcClient; print(HttpArcClient().list_games())"
 
-python train.py --online --game sc25-635fd71a --rounds 10 --eval-episodes 2
+python train.py --online --game sc25 --rounds 10 --eval-episodes 2   # or the full sc25-635fd71a
 ```
 
 > Online is network-bound — every `step` is one HTTP call — so keep `--num-envs`

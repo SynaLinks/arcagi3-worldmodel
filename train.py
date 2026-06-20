@@ -40,7 +40,6 @@ Usage
     pip install -e .
     python train.py --rounds 10 --episodes-per-round 16 --image-size 32
     python train.py --online --rounds 10                         # real API (auto-picks a game)
-    python train.py > last_run.log                               # capture the full run log
     python train.py --rounds 5 --objective explore                # pure exploration
     python train.py --resume checkpoints/<game>.pt --rounds 5    # resume / continue
 """
@@ -75,12 +74,12 @@ warnings.filterwarnings("ignore", message="ale-py not found")
 import stable_worldmodel as swm
 
 # Module logger. Configured in ``setup_logging`` (called from main); every notable
-# event goes through this so ``python train.py > last_run.log`` captures the full run.
+# event goes through this, so the run is captured to the --log-file (last_run.log).
 logger = logging.getLogger("arc")
 
 
 def setup_logging(level: int = logging.INFO, log_file: str | None = None) -> None:
-    """Send logs to stdout (so ``> last_run.log`` works) and optionally a file.
+    """Send logs to stdout and, unless disabled, to ``log_file`` (default last_run.log).
 
     A StreamHandler flushes per record, so output survives a SIGINT/timeout — the
     reason prints were getting lost when interrupting a long online run.
@@ -941,9 +940,9 @@ def main() -> None:
     p.add_argument("--ckpt-dir", default="checkpoints",
                    help="directory for per-game checkpoints (saved as <ckpt-dir>/<game>.pt, "
                         "auto-reloaded when the same game is run again)")
-    p.add_argument("--log-file", default=None,
-                   help="also write logs to this file (stdout is always used; "
-                        "redirect with `python train.py > last_run.log`)")
+    p.add_argument("--log-file", default="last_run.log",
+                   help="also write logs to this file (stdout is always used too); "
+                        "default last_run.log, pass '' to disable")
     p.add_argument("--verbose", action="store_true", help="DEBUG-level logging")
     args = p.parse_args()
     setup_logging(logging.DEBUG if args.verbose else logging.INFO, args.log_file)
